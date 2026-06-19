@@ -1,0 +1,17 @@
+version: 1.0
+runtime: python311
+build:
+  commands:
+    build:
+      - pip install -r requirements.txt
+run:
+  command: gunicorn app:app --bind 0.0.0.0:8080
+  network:
+    port: 8080
+    env: PORT
+  env:
+    - name: MONGO_DB_NAME
+      value: sample_app
+    # MONGO_URI は App Runner コンソールで設定、または Secrets Manager / SSM Parameter Store を参照
+    # - name: MONGO_URI
+    #   value: arn:aws:secretsmanager:ap-northeast-1:123456789012:secret:sample/mongo-uri-AbCdEf

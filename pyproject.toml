@@ -1,0 +1,5 @@
+[tool.ruff]
+ignore = ["F541","F401","E722"]
+
+[tool.ruff.format]
+quote-style="single"

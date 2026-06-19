@@ -1,0 +1,15 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Flask アプリを起動",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "gunicorn",
+      "python": "${workspaceFolder}/.venv/bin/python",
+      "args": ["app:app", "--bind", "0.0.0.0:8080", "--reload"],
+      "console": "integratedTerminal",
+      "envFile": "${workspaceFolder}/.env"
+    }
+  ]
+}
