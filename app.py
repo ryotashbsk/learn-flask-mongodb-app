@@ -1,9 +1,10 @@
 import os
 
 from dotenv import load_dotenv
-from flask import Flask, jsonify
-from pymongo import MongoClient, ASCENDING
-from pymongo.errors import PyMongoError
+from flask import Flask
+from pymongo import MongoClient
+
+from application.routes import register_routes
 
 load_dotenv()
 
@@ -21,37 +22,8 @@ db = mongo_client[MONGO_DB_NAME]
 items_collection = db['items']
 
 app = Flask(__name__)
-
-
-def serialize_item(item: dict) -> dict:
-    return {
-        'id': str(item['_id']),
-        'name': item['name'],
-        'description': item.get('description', ''),
-        'created_at': item.get('created_at').isoformat()
-        if item.get('created_at')
-        else None,
-    }
-
-
-@app.get('/')
-def index():
-    return {'message': 'Hello Flask + MongoDB'}
-
-
-@app.get('/health')
-def health():
-    try:
-        mongo_client.admin.command('ping')
-        return {'status': 'ok', 'database': 'connected'}
-    except PyMongoError as exc:
-        return jsonify({'status': 'error', 'detail': str(exc)}), 500
-
-
-@app.get('/items')
-def get_items():
-    items = items_collection.find().sort('name', ASCENDING)
-    return jsonify({'items': [serialize_item(item) for item in items]})
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024
+register_routes(app, mongo_client, items_collection)
 
 
 if __name__ == '__main__':
