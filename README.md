@@ -33,6 +33,7 @@ learn-flask-mongodb-app/
 ├── requirements-dev.txt
 ├── pyproject.toml
 ├── .editorconfig
+├── .pre-commit-config.yaml
 ├── docker-compose.yml
 ├── mongo-init/
 │   └── 001-items.js
@@ -67,6 +68,8 @@ learn-flask-mongodb-app/
 | `tool.ty.environment.python-version` | 型チェック対象の Python バージョン |
 | `tool.ty.src.include` | 型チェック対象ファイル |
 | `tool.pytest.ini_options.testpaths` | pytest のテスト対象ディレクトリ |
+| `tool.coverage.run.source` | coverage の計測対象 |
+| `tool.coverage.report` | coverage レポート表示設定 |
 
 ## ローカルセットアップ
 
@@ -121,6 +124,33 @@ ty による型チェック。
 
 ```bash
 uv run ty check
+```
+
+## pre-commit
+
+commit 前に品質チェックを自動実行する。
+
+初回のみ Git hook をインストール。
+
+```bash
+uv run pre-commit install
+```
+
+以後、通常の `git commit` や GUI からの commit 時に `.pre-commit-config.yaml` の hook が実行される。
+
+実行内容:
+
+| hook | 内容 |
+| --- | --- |
+| `ruff format --check .` | format 未適用の検出 |
+| `ruff check .` | lint |
+| `ty check` | 型チェック |
+| `pytest` | API 自動テスト |
+
+全hookを手動実行。
+
+```bash
+uv run pre-commit run --all-files
 ```
 
 ## 自動テスト
@@ -221,6 +251,57 @@ def test_replace_item_rejects_invalid_id(client):
 | 入力エラー | 不正 payload や不正ID |
 | 対象なし | 存在しないIDに対する 404 |
 | ドキュメント | OpenAPI JSON に path が含まれること |
+
+## カバレッジ
+
+coverage によるテスト実行行の計測。
+
+```bash
+uv run coverage run -m pytest
+uv run coverage report
+```
+
+HTML レポートを生成。
+
+```bash
+uv run coverage html
+```
+
+HTML は `htmlcov/index.html` で確認。
+
+`coverage report` の見方:
+
+| 列 | 内容 |
+| --- | --- |
+| `Stmts` | 計測対象の実行可能な行数 |
+| `Miss` | テストで実行されなかった行数 |
+| `Cover` | 実行された行の割合 |
+| `Missing` | 実行されなかった行番号 |
+
+カバレッジは数値を上げること自体が目的ではない。  
+未対応行を見て、重要な仕様や壊れやすい分岐がテストされているかを確認する。
+
+テスト追加を優先する例:
+
+| 優先度 | 内容 |
+| --- | --- |
+| 高 | APIのレスポンスが変わる分岐 |
+| 高 | `400`、`404`、`409`、`500` などのエラー分岐 |
+| 高 | DB操作の成功・失敗・対象なし |
+| 中 | body サイズ超過や schema バリデーション |
+| 低 | 実装詳細に強く依存するだけの分岐 |
+
+判断基準:
+
+```txt
+この分岐が壊れたとき、利用者に影響があるか
+この分岐は今後の変更で壊れやすいか
+README や OpenAPI に書いている仕様か
+テストが不自然な実装詳細に依存しないか
+```
+
+目安として、最初から100%を目指さない。  
+正常系、主要な異常系、DB操作の結果判定、公開APIのレスポンス仕様を優先して埋める。
 
 ## 動作確認
 

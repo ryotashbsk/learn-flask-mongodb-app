@@ -146,7 +146,9 @@ def client(fake_collection, fake_mongo_client):
     app.config['OPENAPI_URL_PREFIX'] = '/docs'
     app.config['OPENAPI_JSON_PATH'] = 'openapi.json'
     app.config['OPENAPI_SWAGGER_UI_PATH'] = '/swagger-ui'
-    app.config['OPENAPI_SWAGGER_UI_URL'] = 'https://cdn.jsdelivr.net/npm/swagger-ui-dist/'
+    app.config['OPENAPI_SWAGGER_UI_URL'] = (
+        'https://cdn.jsdelivr.net/npm/swagger-ui-dist/'
+    )
 
     api = Api(app)
     register_routes(app, api, fake_mongo_client, fake_collection)

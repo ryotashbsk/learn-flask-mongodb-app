@@ -12,7 +12,9 @@ MAX_ITEM_DESCRIPTION_LENGTH = 1000
 def serialize_item(item: dict) -> dict:
     # ObjectId と datetime を JSON で扱える文字列に変換
     created_at = item.get('created_at')
-    created_at_text = created_at.isoformat() if isinstance(created_at, datetime) else None
+    created_at_text = (
+        created_at.isoformat() if isinstance(created_at, datetime) else None
+    )
 
     return {
         'id': str(item['_id']),

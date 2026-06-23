@@ -4,7 +4,9 @@ version = "0.1.0"
 requires-python = ">=3.11"
 
 [tool.ruff]
-ignore = ["F541","F401","E722"]
+
+[tool.ruff.lint]
+ignore = ["F541", "F401", "E722"]
 
 [tool.ruff.format]
 quote-style="single"
@@ -17,3 +19,10 @@ include = ["app.py", "application", "tests"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.coverage.run]
+source = ["application"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
