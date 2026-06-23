@@ -3,3 +3,9 @@ ignore = ["F541","F401","E722"]
 
 [tool.ruff.format]
 quote-style="single"
+
+[tool.ty.environment]
+python-version = "3.11"
+
+[tool.ty.src]
+include = ["app.py", "application"]

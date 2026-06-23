@@ -165,6 +165,9 @@ def register_routes(
 
         # 更新後の item を再取得して返却
         updated_item = items_collection.find_one({'_id': object_id})
+        if updated_item is None:
+            return error_response('item not found', 404)
+
         return jsonify({'item': serialize_item(updated_item)})
 
     # ------------------------------------

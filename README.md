@@ -26,7 +26,9 @@ learn-flask-mongodb-app/
 │   ├── helpers.py
 │   └── routes.py
 ├── requirements.txt
+├── requirements-dev.txt
 ├── pyproject.toml
+├── .editorconfig
 ├── docker-compose.yml
 ├── mongo-init/
 │   └── 001-items.js
@@ -52,12 +54,14 @@ learn-flask-mongodb-app/
 
 ## Python 設定
 
-`pyproject.toml` は Ruff の lint / format 設定ファイル。
+`pyproject.toml` は Ruff の lint / format と ty の型チェック設定ファイル。
 
 | 設定 | 内容 |
 | --- | --- |
 | `tool.ruff.ignore` | このサンプルでの Ruff ルール無視対象 |
 | `tool.ruff.format.quote-style` | 文字列引用符を single quote に統一 |
+| `tool.ty.environment.python-version` | 型チェック対象の Python バージョン |
+| `tool.ty.src.include` | 型チェック対象ファイル |
 
 ## ローカルセットアップ
 
@@ -79,6 +83,12 @@ uv venv --python 3.11
 uv pip install -r requirements.txt
 ```
 
+開発用依存パッケージも含めて追加。
+
+```bash
+uv pip install -r requirements-dev.txt
+```
+
 MongoDB コンテナのバックグラウンド起動。
 
 ```bash
@@ -92,6 +102,14 @@ uv run gunicorn app:app --bind 0.0.0.0:8080 --reload
 ```
 
 VS Code では、実行とデバッグの `Flask アプリを起動` を利用。
+
+## 型チェック
+
+ty による型チェック。
+
+```bash
+uv run ty check
+```
 
 ## 動作確認
 

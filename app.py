@@ -12,12 +12,16 @@ MONGO_URI = os.getenv('MONGO_URI', 'mongodb://localhost:27017')
 MONGO_DB_NAME = os.getenv('MONGO_DB_NAME', 'sample_app')
 MONGO_TLS_CA_FILE = os.getenv('MONGO_TLS_CA_FILE')
 
-client_kwargs = {}
 if MONGO_TLS_CA_FILE:
-    client_kwargs['tls'] = True
-    client_kwargs['tlsCAFile'] = MONGO_TLS_CA_FILE
+    mongo_client = MongoClient(
+        MONGO_URI,
+        serverSelectionTimeoutMS=5000,
+        tls=True,
+        tlsCAFile=MONGO_TLS_CA_FILE,
+    )
+else:
+    mongo_client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
 
-mongo_client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000, **client_kwargs)
 db = mongo_client[MONGO_DB_NAME]
 items_collection = db['items']
 

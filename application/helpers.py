@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from bson.errors import InvalidId
 from bson.objectid import ObjectId
 from flask import jsonify, request
@@ -10,13 +12,14 @@ MAX_ITEM_DESCRIPTION_LENGTH = 1000
 # MongoDB の item ドキュメントを JSON 返却用の dict に変換
 def serialize_item(item: dict) -> dict:
     # ObjectId と datetime を JSON で扱える文字列に変換
+    created_at = item.get('created_at')
+    created_at_text = created_at.isoformat() if isinstance(created_at, datetime) else None
+
     return {
         'id': str(item['_id']),
         'name': item['name'],
         'description': item.get('description', ''),
-        'created_at': item.get('created_at').isoformat()
-        if item.get('created_at')
-        else None,
+        'created_at': created_at_text,
     }
 
 
