@@ -1,0 +1,22 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ReadMongoConnectionSecret",
+      "Effect": "Allow",
+      "Action": [
+        "secretsmanager:GetSecretValue"
+      ],
+      "Resource": "arn:aws:secretsmanager:ap-northeast-1:123456789012:secret:learn-flask-mongodb-app/mongo-uri-*"
+    },
+    {
+      "Sid": "ReadMongoConnectionParameter",
+      "Effect": "Allow",
+      "Action": [
+        "ssm:GetParameters",
+        "ssm:GetParameter"
+      ],
+      "Resource": "arn:aws:ssm:ap-northeast-1:123456789012:parameter/learn-flask-mongodb-app/*"
+    }
+  ]
+}

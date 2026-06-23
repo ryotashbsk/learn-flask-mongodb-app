@@ -3,15 +3,17 @@ runtime: python311
 build:
   commands:
     build:
+      - pip install --upgrade pip
       - pip install -r requirements.txt
 run:
-  command: gunicorn app:app --bind 0.0.0.0:8080
+  command: gunicorn app:app --bind 0.0.0.0:8080 --workers 2 --timeout 60
   network:
     port: 8080
     env: PORT
   env:
     - name: MONGO_DB_NAME
       value: sample_app
-    # MONGO_URI は App Runner コンソールで設定、または Secrets Manager / SSM Parameter Store を参照
-    # - name: MONGO_URI
-    #   value: arn:aws:secretsmanager:ap-northeast-1:123456789012:secret:sample/mongo-uri-AbCdEf
+    - name: LOG_LEVEL
+      value: INFO
+    # MONGO_URI は App Runner コンソールまたは CLI で Secrets Manager / SSM Parameter Store 参照として設定してください。
+    # 例: arn:aws:secretsmanager:ap-northeast-1:123456789012:secret:learn-flask-mongodb-app/mongo-uri-AbCdEf
