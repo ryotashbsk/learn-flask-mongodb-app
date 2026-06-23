@@ -1,3 +1,4 @@
+import logging
 import os
 
 from dotenv import load_dotenv
@@ -12,6 +13,13 @@ load_dotenv()
 MONGO_URI = os.getenv('MONGO_URI', 'mongodb://localhost:27017')
 MONGO_DB_NAME = os.getenv('MONGO_DB_NAME', 'sample_app')
 MONGO_TLS_CA_FILE = os.getenv('MONGO_TLS_CA_FILE')
+LOG_LEVEL_NAME = os.getenv('LOG_LEVEL', 'INFO').upper()
+LOG_LEVEL = getattr(logging, LOG_LEVEL_NAME, logging.INFO)
+
+logging.basicConfig(
+    level=LOG_LEVEL,
+    format='%(asctime)s %(levelname)s [%(name)s] %(message)s',
+)
 
 if MONGO_TLS_CA_FILE:
     mongo_client = MongoClient(
@@ -38,6 +46,11 @@ app.config['OPENAPI_SWAGGER_UI_URL'] = 'https://cdn.jsdelivr.net/npm/swagger-ui-
 
 api = Api(app)
 register_routes(app, api, mongo_client, items_collection)
+app.logger.info(
+    'application configured database=%s log_level=%s',
+    MONGO_DB_NAME,
+    logging.getLevelName(LOG_LEVEL),
+)
 
 
 if __name__ == '__main__':

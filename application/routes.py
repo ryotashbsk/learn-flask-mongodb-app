@@ -34,6 +34,7 @@ def register_routes(
     @app.errorhandler(413)
     def request_entity_too_large(error):
         # Flask の body サイズ制限超過を JSON 形式に統一
+        app.logger.warning('request body is too large')
         return error_response('request body is too large', 413)
 
     # ------------------------------------
@@ -59,9 +60,11 @@ def register_routes(
         try:
             # MongoDB へ ping を送り、接続可能かを確認
             mongo_client.admin.command('ping')
+            app.logger.debug('health check succeeded')
             return {'status': 'ok', 'database': 'connected'}
         except PyMongoError as exc:
             # 接続エラーは 500 と詳細メッセージで返却
+            app.logger.exception('health check failed')
             return jsonify({'status': 'error', 'detail': str(exc)}), 500
 
     # ------------------------------------
@@ -73,7 +76,8 @@ def register_routes(
     def get_items():
         """items collection の一覧取得"""
         # name 昇順で collection の全 item を取得
-        items = items_collection.find().sort('name', ASCENDING)
+        items = list(items_collection.find().sort('name', ASCENDING))
+        app.logger.debug('items fetched count=%s', len(items))
         # MongoDB 固有の型を JSON 返却用に変換
         return {'items': [serialize_item(item) for item in items]}
 
@@ -95,10 +99,12 @@ def register_routes(
             result = items_collection.insert_one(item)
         except DuplicateKeyError:
             # name の unique index 違反を 409 として返却
+            app.logger.warning('item create rejected reason=duplicate_name')
             return error_response('name already exists', 409)
 
         # 追加された ObjectId を返却用データに反映
         item['_id'] = result.inserted_id
+        app.logger.info('item created item_id=%s', result.inserted_id)
         return jsonify({'item': serialize_item(item)}), 201
 
     # ------------------------------------
@@ -116,11 +122,15 @@ def register_routes(
         # URL パラメータの ID 形式を検証
         object_id = parse_item_id(item_id)
         if object_id is None:
+            app.logger.warning(
+                'item replace rejected reason=invalid_id item_id=%s', item_id
+            )
             return error_response('invalid item id', 400)
 
         # 置換対象の存在確認
         current_item = items_collection.find_one({'_id': object_id})
         if current_item is None:
+            app.logger.info('item replace skipped reason=not_found item_id=%s', item_id)
             return error_response('item not found', 404)
 
         # 作成日時は既存値を維持
@@ -131,10 +141,14 @@ def register_routes(
             items_collection.replace_one({'_id': object_id}, replacement)
         except DuplicateKeyError:
             # name の unique index 違反を 409 として返却
+            app.logger.warning(
+                'item replace rejected reason=duplicate_name item_id=%s', item_id
+            )
             return error_response('name already exists', 409)
 
         # 置換後の ObjectId を返却用データに反映
         replacement['_id'] = object_id
+        app.logger.info('item replaced item_id=%s', item_id)
         return jsonify({'item': serialize_item(replacement)})
 
     # ------------------------------------
@@ -152,6 +166,9 @@ def register_routes(
         # URL パラメータの ID 形式を検証
         object_id = parse_item_id(item_id)
         if object_id is None:
+            app.logger.warning(
+                'item update rejected reason=invalid_id item_id=%s', item_id
+            )
             return error_response('invalid item id', 400)
 
         try:
@@ -162,17 +179,23 @@ def register_routes(
             )
         except DuplicateKeyError:
             # name の unique index 違反を 409 として返却
+            app.logger.warning(
+                'item update rejected reason=duplicate_name item_id=%s', item_id
+            )
             return error_response('name already exists', 409)
 
         # 更新対象が存在しない場合は 404
         if result.matched_count == 0:
+            app.logger.info('item update skipped reason=not_found item_id=%s', item_id)
             return error_response('item not found', 404)
 
         # 更新後の item を再取得して返却
         updated_item = items_collection.find_one({'_id': object_id})
         if updated_item is None:
+            app.logger.error('item update missing after matched item_id=%s', item_id)
             return error_response('item not found', 404)
 
+        app.logger.info('item updated item_id=%s', item_id)
         return jsonify({'item': serialize_item(updated_item)})
 
     # ------------------------------------
@@ -188,14 +211,19 @@ def register_routes(
         # URL パラメータの ID 形式を検証
         object_id = parse_item_id(item_id)
         if object_id is None:
+            app.logger.warning(
+                'item delete rejected reason=invalid_id item_id=%s', item_id
+            )
             return error_response('invalid item id', 400)
 
         # 指定IDの item を削除
         result = items_collection.delete_one({'_id': object_id})
         if result.deleted_count == 0:
+            app.logger.info('item delete skipped reason=not_found item_id=%s', item_id)
             return error_response('item not found', 404)
 
         # 削除成功時は対象IDを返却
+        app.logger.info('item deleted item_id=%s', item_id)
         return jsonify({'deleted': True, 'id': item_id})
 
     api.register_blueprint(blp)
