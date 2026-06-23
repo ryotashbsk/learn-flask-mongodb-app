@@ -1,3 +1,8 @@
+[project]
+name = "learn-flask-mongodb-app"
+version = "0.1.0"
+requires-python = ">=3.11"
+
 [tool.ruff]
 ignore = ["F541","F401","E722"]
 
@@ -8,4 +13,7 @@ quote-style="single"
 python-version = "3.11"
 
 [tool.ty.src]
-include = ["app.py", "application"]
+include = ["app.py", "application", "tests"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

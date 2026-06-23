@@ -22,8 +22,6 @@ from application.schemas import (
     MessageSchema,
 )
 
-blp = Blueprint('api', __name__, description='Flask + MongoDB sample API')
-
 
 def register_routes(
     app: Flask,
@@ -31,6 +29,8 @@ def register_routes(
     mongo_client: MongoClient,
     items_collection: Collection,
 ) -> None:
+    blp = Blueprint('api', __name__, description='Flask + MongoDB sample API')
+
     @app.errorhandler(413)
     def request_entity_too_large(error):
         # Flask の body サイズ制限超過を JSON 形式に統一

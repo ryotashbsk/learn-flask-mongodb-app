@@ -26,6 +26,9 @@ learn-flask-mongodb-app/
 │   ├── helpers.py
 │   ├── routes.py
 │   └── schemas.py
+├── tests/
+│   ├── conftest.py
+│   └── test_api.py
 ├── requirements.txt
 ├── requirements-dev.txt
 ├── pyproject.toml
@@ -63,6 +66,7 @@ learn-flask-mongodb-app/
 | `tool.ruff.format.quote-style` | 文字列引用符を single quote に統一 |
 | `tool.ty.environment.python-version` | 型チェック対象の Python バージョン |
 | `tool.ty.src.include` | 型チェック対象ファイル |
+| `tool.pytest.ini_options.testpaths` | pytest のテスト対象ディレクトリ |
 
 ## ローカルセットアップ
 
@@ -118,6 +122,105 @@ ty による型チェック。
 ```bash
 uv run ty check
 ```
+
+## 自動テスト
+
+pytest による API 自動テスト。
+
+```bash
+uv run pytest
+```
+
+pytest は `pyproject.toml` の `tool.pytest.ini_options.testpaths` により、`tests/` ディレクトリをテスト対象として読み込む。
+
+| ファイル | 役割 |
+| --- | --- |
+| `tests/conftest.py` | テスト実行時にプロジェクトルートを import path に追加 |
+| `tests/test_api.py` | Flask の `test_client()` を使った API テスト |
+
+`tests/test_api.py` では、実際の MongoDB には接続しない。  
+`FakeMongoClient` と `FakeItemsCollection` を使って、テスト用の Flask アプリに `register_routes()` を登録する。
+
+テスト対象:
+
+| 対象 | 内容 |
+| --- | --- |
+| 疎通確認 | `GET /` |
+| ヘルスチェック | `GET /health` |
+| CRUD | `GET /items`、`POST /items`、`PUT /items/<id>`、`PATCH /items/<id>`、`DELETE /items/<id>` |
+| エラー系 | 不正ID、重複 `name`、不正 payload、存在しない item |
+| API ドキュメント | `/docs/openapi.json`、`/docs/swagger-ui` |
+
+テストの流れ:
+
+```txt
+uv run pytest
+  ↓
+tests/ 配下の test_*.py を収集
+  ↓
+fixture でテスト用 Flask アプリを作成
+  ↓
+test_client() で API を呼び出し
+  ↓
+assert でステータスコードと JSON を検証
+```
+
+### テストの書き方
+
+テストファイルは `tests/test_*.py` として作成する。  
+テスト関数は `test_` で始める。
+
+```python
+def test_index(client):
+    response = client.get('/')
+
+    assert response.status_code == 200
+    assert response.get_json() == {'message': 'Hello Flask + MongoDB'}
+```
+
+`client` は pytest の fixture。  
+テスト関数の引数に `client` と書くと、pytest が自動でテスト用 Flask アプリの `test_client()` を渡す。
+
+API のテストでは、基本的に以下を確認する。
+
+| 確認対象 | 例 |
+| --- | --- |
+| HTTP ステータス | `assert response.status_code == 200` |
+| レスポンス JSON | `assert response.get_json()['item']['name'] == 'Orange'` |
+| エラー内容 | `assert response.get_json() == {'error': 'item not found'}` |
+| 状態変化 | `POST` 後に作成結果を確認、`DELETE` 後に削除結果を確認 |
+
+POST / PUT / PATCH は `json=` に送信 payload を渡す。
+
+```python
+def test_create_item(client):
+    response = client.post(
+        '/items',
+        json={'name': 'Orange', 'description': 'Created by POST'},
+    )
+
+    assert response.status_code == 201
+    assert response.get_json()['item']['name'] == 'Orange'
+```
+
+異常系も正常系と同じ形式で書く。
+
+```python
+def test_replace_item_rejects_invalid_id(client):
+    response = client.put('/items/invalid-id', json={'name': 'Grape'})
+
+    assert response.status_code == 400
+    assert response.get_json() == {'error': 'invalid item id'}
+```
+
+新しいエンドポイントを追加した場合は、最低限以下を追加する。
+
+| 種類 | 内容 |
+| --- | --- |
+| 正常系 | 期待するステータスコードと JSON |
+| 入力エラー | 不正 payload や不正ID |
+| 対象なし | 存在しないIDに対する 404 |
+| ドキュメント | OpenAPI JSON に path が含まれること |
 
 ## 動作確認
 
