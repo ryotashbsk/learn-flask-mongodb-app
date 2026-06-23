@@ -24,7 +24,8 @@ learn-flask-mongodb-app/
 ├── application/
 │   ├── __init__.py
 │   ├── helpers.py
-│   └── routes.py
+│   ├── routes.py
+│   └── schemas.py
 ├── requirements.txt
 ├── requirements-dev.txt
 ├── pyproject.toml
@@ -102,6 +103,13 @@ uv run gunicorn app:app --bind 0.0.0.0:8080 --reload
 ```
 
 VS Code では、実行とデバッグの `Flask アプリを起動` を利用。
+
+## API ドキュメント
+
+| メソッド | URL | 概要 |
+| --- | --- | --- |
+| GET | `http://localhost:8080/docs/swagger-ui` | Swagger UI |
+| GET | `http://localhost:8080/docs/openapi.json` | OpenAPI JSON |
 
 ## 型チェック
 

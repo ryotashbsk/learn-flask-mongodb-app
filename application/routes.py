@@ -1,21 +1,33 @@
 from datetime import UTC, datetime
 
 from flask import Flask, jsonify
+from flask_smorest import Api, Blueprint
 from pymongo import ASCENDING, MongoClient
 from pymongo.collection import Collection
 from pymongo.errors import DuplicateKeyError, PyMongoError
 
 from application.helpers import (
     error_response,
-    get_json_body,
     parse_item_id,
-    read_item_payload,
     serialize_item,
 )
+from application.schemas import (
+    DeleteResponseSchema,
+    ErrorResponseSchema,
+    HealthSchema,
+    ItemListSchema,
+    ItemPatchPayloadSchema,
+    ItemPayloadSchema,
+    ItemResponseSchema,
+    MessageSchema,
+)
+
+blp = Blueprint('api', __name__, description='Flask + MongoDB sample API')
 
 
 def register_routes(
     app: Flask,
+    api: Api,
     mongo_client: MongoClient,
     items_collection: Collection,
 ) -> None:
@@ -28,8 +40,10 @@ def register_routes(
     # GET /
     # アプリケーションの疎通確認用メッセージ
     # ------------------------------------
-    @app.get('/')
+    @blp.route('/')
+    @blp.response(200, MessageSchema)
     def index():
+        """アプリケーションの疎通確認用メッセージ"""
         # アプリケーションが応答可能な状態かを固定メッセージで返却
         return {'message': 'Hello Flask + MongoDB'}
 
@@ -37,8 +51,11 @@ def register_routes(
     # GET /health
     # MongoDB への接続状態確認
     # ------------------------------------
-    @app.get('/health')
+    @blp.route('/health')
+    @blp.response(200, HealthSchema)
+    @blp.alt_response(500, schema=ErrorResponseSchema)
     def health():
+        """MongoDB への接続状態確認"""
         try:
             # MongoDB へ ping を送り、接続可能かを確認
             mongo_client.admin.command('ping')
@@ -51,29 +68,25 @@ def register_routes(
     # GET /items
     # items collection の一覧取得
     # ------------------------------------
-    @app.get('/items')
+    @blp.route('/items')
+    @blp.response(200, ItemListSchema)
     def get_items():
+        """items collection の一覧取得"""
         # name 昇順で collection の全 item を取得
         items = items_collection.find().sort('name', ASCENDING)
         # MongoDB 固有の型を JSON 返却用に変換
-        return jsonify({'items': [serialize_item(item) for item in items]})
+        return {'items': [serialize_item(item) for item in items]}
 
     # ------------------------------------
     # POST /items
     # items collection へのデータ追加
     # ------------------------------------
-    @app.post('/items')
-    def create_item():
-        # JSON body の形式を検証
-        body = get_json_body()
-        if body is None:
-            return error_response('JSON object body is required', 400)
-
-        # 作成用 payload を検証して保存用 dict に変換
-        item, item_error = read_item_payload(body, require_name=True)
-        if item_error:
-            return error_response(item_error, 400)
-
+    @blp.route('/items', methods=['POST'])
+    @blp.arguments(ItemPayloadSchema)
+    @blp.response(201, ItemResponseSchema)
+    @blp.alt_response(409, schema=ErrorResponseSchema)
+    def create_item(item):
+        """items collection へのデータ追加"""
         # 新規作成日時を UTC で保存
         item['created_at'] = datetime.now(UTC)
 
@@ -92,22 +105,18 @@ def register_routes(
     # PUT /items/<item_id>
     # 指定IDの item 全体を置換
     # ------------------------------------
-    @app.put('/items/<item_id>')
-    def replace_item(item_id: str):
+    @blp.route('/items/<item_id>', methods=['PUT'])
+    @blp.arguments(ItemPayloadSchema)
+    @blp.response(200, ItemResponseSchema)
+    @blp.alt_response(400, schema=ErrorResponseSchema)
+    @blp.alt_response(404, schema=ErrorResponseSchema)
+    @blp.alt_response(409, schema=ErrorResponseSchema)
+    def replace_item(replacement, item_id: str):
+        """指定IDの item 全体を置換"""
         # URL パラメータの ID 形式を検証
         object_id = parse_item_id(item_id)
         if object_id is None:
             return error_response('invalid item id', 400)
-
-        # JSON body の形式を検証
-        body = get_json_body()
-        if body is None:
-            return error_response('JSON object body is required', 400)
-
-        # 置換用 payload を検証して保存用 dict に変換
-        replacement, replacement_error = read_item_payload(body, require_name=True)
-        if replacement_error:
-            return error_response(replacement_error, 400)
 
         # 置換対象の存在確認
         current_item = items_collection.find_one({'_id': object_id})
@@ -132,22 +141,18 @@ def register_routes(
     # PATCH /items/<item_id>
     # 指定IDの item を部分更新
     # ------------------------------------
-    @app.patch('/items/<item_id>')
-    def update_item(item_id: str):
+    @blp.route('/items/<item_id>', methods=['PATCH'])
+    @blp.arguments(ItemPatchPayloadSchema)
+    @blp.response(200, ItemResponseSchema)
+    @blp.alt_response(400, schema=ErrorResponseSchema)
+    @blp.alt_response(404, schema=ErrorResponseSchema)
+    @blp.alt_response(409, schema=ErrorResponseSchema)
+    def update_item(update_fields, item_id: str):
+        """指定IDの item を部分更新"""
         # URL パラメータの ID 形式を検証
         object_id = parse_item_id(item_id)
         if object_id is None:
             return error_response('invalid item id', 400)
-
-        # JSON body の形式を検証
-        body = get_json_body()
-        if body is None:
-            return error_response('JSON object body is required', 400)
-
-        # 部分更新用 payload を検証して $set 用 dict に変換
-        update_fields, update_error = read_item_payload(body, require_name=False)
-        if update_error:
-            return error_response(update_error, 400)
 
         try:
             # 指定IDの item に指定フィールドのみ反映
@@ -174,8 +179,12 @@ def register_routes(
     # DELETE /items/<item_id>
     # 指定IDの item を削除
     # ------------------------------------
-    @app.delete('/items/<item_id>')
+    @blp.route('/items/<item_id>', methods=['DELETE'])
+    @blp.response(200, DeleteResponseSchema)
+    @blp.alt_response(400, schema=ErrorResponseSchema)
+    @blp.alt_response(404, schema=ErrorResponseSchema)
     def delete_item(item_id: str):
+        """指定IDの item を削除"""
         # URL パラメータの ID 形式を検証
         object_id = parse_item_id(item_id)
         if object_id is None:
@@ -188,3 +197,5 @@ def register_routes(
 
         # 削除成功時は対象IDを返却
         return jsonify({'deleted': True, 'id': item_id})
+
+    api.register_blueprint(blp)
